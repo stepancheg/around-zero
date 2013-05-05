@@ -1,0 +1,89 @@
+#[crate_type = "bin"]
+
+extern mod std;
+
+use daily::*;
+
+mod daily;
+mod misc;
+
+enum MinMax {
+    Min,
+    Max,
+}
+
+impl MinMax {
+    fn parse(s: &str) -> MinMax {
+        if s == "TMIN" { Min }
+        else if s == "TMAX" { Max }
+        else {
+            fail!(~"unknown");
+        }
+    }
+}
+
+impl ToStr for MinMax {
+    fn to_str(&self) -> ~str {
+        match self {
+            &Min => ~"TMIN",
+            &Max => ~"TMAX",
+        }
+    }
+}
+
+struct MinMaxRecord {
+    stationId: ~str,
+    date: ~str,
+    minMax: MinMax,
+    tenthC: i32,
+}
+
+impl MinMaxRecord {
+    fn parse(daily_record: &DailyRecord) -> MinMaxRecord {
+        MinMaxRecord {
+            stationId: daily_record.stationId.to_owned(),
+            date: daily_record.date.to_owned(),
+            minMax: MinMax::parse(daily_record.kind),
+            tenthC: i32::from_str(daily_record.value).get(),
+        }
+    }
+}
+
+impl ToStr for MinMaxRecord {
+    fn to_str(&self) -> ~str {
+        self.stationId + "," + self.date + "," + self.minMax.to_str() + "," + self.tenthC.to_str()
+    }
+}
+
+fn load_minmax_from_file(file: &path::Path) -> ~[MinMaxRecord] {
+    let mut r: ~[MinMaxRecord] = ~[];
+    let reader = io::file_reader(file).unwrap();
+    reader.each_line(|line| { r.push(MinMaxRecord::parse(&DailyRecord::parse(line))); true });
+    r
+}
+
+fn main() {
+    if os::args().len() != 2 {
+        fail!(~"usage: " + os::args()[0] + " <station id>");
+    }
+    let stationId = os::args()[1].to_owned();
+    let records = load_minmax_from_file(~path::Path(~"work/" + stationId + ".csv"));
+
+    let mut first = true;
+    let mut last_positive = false;
+    let mut count = 0 as u32;
+    for records.each |&r| {
+        //io::println(r.to_str());
+        if first {
+            first = false;
+        } else {
+            let current_positive = r.tenthC >= 0;
+            if last_positive != current_positive {
+                count += 1;
+                io::println(r.to_str());
+            }
+        }
+        last_positive = r.tenthC >= 0;
+    }
+    io::println(count.to_str());
+}
