@@ -1,0 +1,35 @@
+#[crate_type = "bin"]
+
+extern mod std;
+
+use std::sort;
+
+use stations::*;
+use geo::*;
+
+
+mod stations;
+mod geo;
+mod misc;
+
+
+
+fn main() {
+    if os::args().len() != 3 {
+        fail!(~"usage: " + os::args()[0] + " <lat> <long>");
+    }
+
+    let lat = f32::from_str(os::args()[1]).get();
+    let long = f32::from_str(os::args()[2]).get();
+    let origin = Coord { lat: lat, long: long };
+
+    let stations: ~[Station] = load_stations();
+    let mut with_distance: ~[(Station, f32)] = vec::map(stations, |&st| (copy st, st.coord.dist(&origin)));
+
+    sort::quick_sort(with_distance, |&a, &b| { let (_, adist) = a; let (_, bdist) = b; adist < bdist });
+
+    for with_distance.each |&w| {
+        let (st, dist) = w;
+        io::println(st.to_str() + " " + dist.to_str());
+    }
+}

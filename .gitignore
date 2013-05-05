@@ -1,0 +1,5 @@
+*.DSYM
+*~
+closest_stations
+2012.*
+*.txt
